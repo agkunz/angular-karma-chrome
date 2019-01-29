@@ -1,0 +1,63 @@
+cache:
+  paths:
+    - node_modules/
+
+build:
+  stage: build
+  
+  environment: 
+    name: production
+  
+  only:
+    - master
+  
+  script:
+    - rm ./package-lock.json
+    - npm config set "@fortawesome:registry" https://npm.fontawesome.com/
+    - npm config set "//npm.fontawesome.com/:_authToken" E27DD1DE-FE12-455C-BD34-9B6E01376FAC
+    - npm install
+    - ./node_modules/@angular/cli/bin/ng build --prod
+  
+  artifacts:
+    paths:
+      - dist/
+
+test:
+  stage: test
+  
+  environment: 
+    name: production
+  
+  only:
+    - master
+  
+  script:
+    - ./node_modules/@angular/cli/bin/ng test --watch=false --code-coverage
+  
+  artifacts:
+    paths:
+      - dist/
+      - coverage/
+
+deploy:
+  stage: deploy
+  
+  environment: 
+    name: production
+  
+  only:
+    - master
+  
+  before_script:
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+
+    - echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+
+    - ssh-keyscan $DEPLOY_SSH_HOST >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  
+  script:
+    - rsync -avz --delete ./dist $DEPLOY_SSH_USER@$DEPLOY_SSH_HOST:$DEPLOY_SSH_DIR/dist
+    - rsync -avz --delete ./coverage $DEPLOY_SSH_USER@$DEPLOY_SSH_HOST:$DEPLOY_SSH_DIR/coverage
